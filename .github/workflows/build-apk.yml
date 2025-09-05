@@ -10,7 +10,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install dependencies
       run: |
@@ -21,6 +21,11 @@ jobs:
       run: |
         pip3 install --upgrade pip
         pip3 install buildozer cython
+
+    - name: Force Build-Tools version
+      run: |
+        mkdir -p ~/.buildozer/android/platform/android-sdk/build-tools
+        echo "android.build_tools_version = 33.0.2" >> buildozer.spec
 
     - name: Build APK
       run: |
