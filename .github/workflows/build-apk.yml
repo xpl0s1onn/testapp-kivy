@@ -17,25 +17,30 @@ jobs:
         sudo apt update
         sudo apt install -y \
           python3-pip python3-setuptools git openjdk-17-jdk zip unzip \
-          build-essential autoconf automake libtool pkg-config
+          build-essential autoconf automake libtool pkg-config \
+          python3-distutils python3-dev
 
-    - name: Create virtual environment
+    - name: Install Buildozer
       run: |
-        python3 -m venv venv
-        source venv/bin/activate
-        python3 -m pip install --upgrade pip
-        pip install setuptools
-        pip install buildozer cython virtualenv
+        pip3 install --upgrade pip
+        pip3 install --user buildozer cython
+        echo "$HOME/.local/bin" >> $GITHUB_PATH  # добавляем путь в PATH
 
     - name: Patch libffi for GitHub Actions
       run: |
         echo "🔧 Патчим libffi..."
-        find .buildozer/android/platform/build-* -type f -name "configure.ac" -exec \
-          sed -i '1i m4_pattern_allow([LT_SYS_SYMBOL_USCORE])' {} \; || echo "⚠️ libffi не найден — возможно не успел скачаться, попробуй запустить сборку ещё раз"
+        BUILD_DIR=".buildozer/android/platform/build-*"
+        if [ -d $BUILD_DIR ]; then
+            find $BUILD_DIR -name "configure.ac" | while read f; do
+                echo "⚡ Разрешаем LT_SYS_SYMBOL_USCORE в $f"
+                sed -i '/AC_INIT/i m4_pattern_allow([LT_SYS_SYMBOL_USCORE])' "$f"
+            done
+        else
+            echo "⚠️ Папка libffi ещё не создана — пропускаем патч, попробуем после сборки"
+        fi
 
     - name: Build APK
       run: |
-        source venv/bin/activate
         buildozer android debug
 
     - name: Upload APK
