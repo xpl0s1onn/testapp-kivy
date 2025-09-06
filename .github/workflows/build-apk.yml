@@ -12,14 +12,14 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
       with:
-        submodules: recursive   # подтягиваем подмодули сразу
+        submodules: recursive
 
     - name: Install system dependencies
       run: |
         sudo apt update
         sudo apt install -y \
           python3-pip python3-setuptools python3-venv git \
-          openjdk-17-jdk zip unzip build-essential autoconf autoconf-archive  automake libtool pkg-config
+          openjdk-17-jdk zip unzip build-essential autoconf automake libtool autoconf-archive pkg-config
 
     - name: Update git submodules
       run: git submodule update --init --recursive
@@ -33,10 +33,12 @@ jobs:
         pip install --upgrade pip
         pip install buildozer cython setuptools
 
-#    - name: Run autoupdate (optional)
-#      run: |
-#        sudo apt install -y autoconf-archive
-#        autoupdate || true
+    - name: Patch libffi macros
+      run: |
+        echo "🔧 Разрешаем LT_SYS_SYMBOL_USCORE через m4_pattern_allow..."
+        find .buildozer/android/platform -name "configure.ac" -exec \
+          sed -i '1im4_pattern_allow([^LT_SYS_SYMBOL_USCORE$])' {} \; || true
+        echo "✅ Патч применён (если файл найден)"
 
     - name: Build APK
       run: |
