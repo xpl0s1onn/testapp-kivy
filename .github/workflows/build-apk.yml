@@ -31,7 +31,7 @@ jobs:
       run: |
         source venv/bin/activate
         pip install --upgrade pip
-        pip install buildozer cython
+        pip install buildozer cython setuptools
 
     - name: Run autoupdate (optional)
       run: |
