@@ -14,6 +14,11 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
     - name: Install system dependencies
       run: |
         sudo apt update
@@ -33,27 +38,14 @@ jobs:
         pip install --upgrade pip
         pip install buildozer cython setuptools
 
-    - name: Run Buildozer once to generate platform folder
-      run: |
-        source venv/bin/activate
-        buildozer android debug || true
-
     - name: Patch libffi macros
       run: |
-        echo "🔧 Ищем configure.ac и патчим LT_SYS_SYMBOL_USCORE..."
-        FILES=$(find .buildozer/android/platform -name "configure.ac")
-        if [ -z "$FILES" ]; then
-          echo "⚠️ configure.ac не найден — патч не применён"
-        else
-          echo "✅ Найдено $(echo "$FILES" | wc -l) файл(ов) — вносим правки..."
-          echo "$FILES" | while read FILE; do
-            sed -i '1im4_pattern_allow([^LT_SYS_SYMBOL_USCORE$])' "$FILE"
-            echo "  🔧 Пропатчен: $FILE"
-          done
-          echo "🎉 Патч успешно применён"
-        fi
+        echo "🔧 Разрешаем LT_SYS_SYMBOL_USCORE через m4_pattern_allow..."
+        find .buildozer/android/platform -name "configure.ac" -exec \
+          sed -i '1im4_pattern_allow([^LT_SYS_SYMBOL_USCORE$])' {} \; || true
+        echo "✅ Патч применён (если файл найден)"
 
-    - name: Build APK (second run)
+    - name: Build APK
       run: |
         source venv/bin/activate
         buildozer android debug
