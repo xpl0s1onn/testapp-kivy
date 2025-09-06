@@ -33,12 +33,16 @@ jobs:
         pip install --upgrade pip
         pip install buildozer cython setuptools
 
-    - name: Patch libffi macros
+    - name: Patch libffi macros (safe)
       run: |
-        echo "🔧 Разрешаем LT_SYS_SYMBOL_USCORE через m4_pattern_allow..."
-        find .buildozer/android/platform -name "configure.ac" -exec \
-          sed -i '1im4_pattern_allow([^LT_SYS_SYMBOL_USCORE$])' {} \; || true
-        echo "✅ Патч применён (если файл найден)"
+        echo "🔧 Ищем configure.ac и патчим LT_SYS_SYMBOL_USCORE..."
+        if find .buildozer/android/platform -name "configure.ac" | grep -q configure.ac; then
+          find .buildozer/android/platform -name "configure.ac" -exec \
+            sed -i '1im4_pattern_allow([^LT_SYS_SYMBOL_USCORE$])' {} \;
+          echo "✅ configure.ac найден и пропатчен"
+        else
+          echo "⚠️ configure.ac не найден — пропускаем патч"
+        fi
 
     - name: Build APK
       run: |
