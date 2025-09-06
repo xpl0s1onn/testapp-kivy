@@ -11,29 +11,32 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
-
-    - name: Setup Python 3.11
-      uses: actions/setup-python@v4
       with:
-        python-version: 3.11
+        submodules: recursive   # подтягиваем подмодули сразу
 
     - name: Install system dependencies
       run: |
         sudo apt update
         sudo apt install -y \
-          git openjdk-17-jdk zip unzip build-essential \
-          autoconf automake libtool pkg-config
+          python3-pip python3-setuptools python3-venv git \
+          openjdk-17-jdk zip unzip build-essential autoconf automake libtool pkg-config
+
+    - name: Update git submodules
+      run: git submodule update --init --recursive
 
     - name: Create virtual environment
-      run: |
-        python -m venv venv
-        source venv/bin/activate
-        python -m pip install --upgrade pip
+      run: python3 -m venv venv
 
-    - name: Install Buildozer and P4A
+    - name: Activate venv and install Buildozer
       run: |
         source venv/bin/activate
-        pip install buildozer python-for-android cython
+        pip install --upgrade pip
+        pip install buildozer cython
+
+    - name: Run autoupdate (optional)
+      run: |
+        sudo apt install -y autoconf-archive
+        autoupdate || true
 
     - name: Build APK
       run: |
