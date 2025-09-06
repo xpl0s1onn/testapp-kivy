@@ -12,30 +12,41 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Install system dependencies
+    - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y \
-          python3-pip python3-setuptools git openjdk-17-jdk zip unzip \
-          build-essential autoconf automake libtool pkg-config gettext m4
+        sudo apt install -y python3-pip python3-setuptools git openjdk-17-jdk zip unzip wget automake autoconf libtool pkg-config
+        pip install --upgrade pip
+        pip install buildozer cython virtualenv
 
-    - name: Install Buildozer and P4A
+    - name: Build APK with libffi patch
       run: |
-        pip3 install --upgrade pip
-        pip3 install --user buildozer cython python-for-android
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
+        # Создаём виртуальное окружение для buildozer
+        python3 -m venv venv
+        source venv/bin/activate
 
-    - name: Patch libffi for GitHub Actions
-      run: |
-        # Добавляем разрешение макроса LT_SYS_SYMBOL_USCORE
-        find .buildozer/android/platform/build-* -type f -name "configure.ac" -exec sed -i '/AC_INIT/i m4_pattern_allow([LT_SYS_SYMBOL_USCORE])' {} \; || true
+        # Устанавливаем buildozer (на всякий случай обновляем)
+        pip install --upgrade buildozer
 
-    - name: Build APK
-      run: |
+        # Запускаем предварительную сборку, чтобы buildozer скачал libffi
+        buildozer android debug || true
+
+        echo "🔧 Патчим libffi..."
+        LIBFFI_PATH=$(find .buildozer/android/platform/build-arm64-v8a -type d -name "libffi" | head -n 1 || true)
+        if [ -n "$LIBFFI_PATH" ]; then
+          echo "✅ Найден libffi: $LIBFFI_PATH"
+          sed -i '/AC_PROG_LIBTOOL/a m4_pattern_allow([LT_SYS_SYMBOL_USCORE])' "$LIBFFI_PATH/configure.ac"
+          echo "✅ Пропатчено configure.ac"
+          (cd "$LIBFFI_PATH" && autoreconf -fi)
+        else
+          echo "⚠️ libffi не найден — возможно не успел скачаться, попробуй запустить сборку ещё раз"
+        fi
+
+        # Запускаем сборку повторно (теперь с пропатченным libffi)
         buildozer android debug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: TestApp-APK
+        name: MyApp
         path: bin/*.apk
