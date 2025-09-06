@@ -12,23 +12,23 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Install dependencies
+    - name: Install system dependencies
       run: |
         sudo apt update
         sudo apt install -y \
           python3-pip python3-setuptools git openjdk-17-jdk zip unzip \
-          build-essential autoconf automake libtool pkg-config
+          build-essential autoconf automake libtool pkg-config gettext m4
 
-    - name: Install older autoconf and libtool
-      run: |
-        sudo apt-get install -y autoconf2.13 libtool
-        sudo ln -sf /usr/bin/autoconf2.13 /usr/bin/autoconf
-
-    - name: Install Buildozer
+    - name: Install Buildozer and P4A
       run: |
         pip3 install --upgrade pip
-        pip3 install --user buildozer cython
+        pip3 install --user buildozer cython python-for-android
         echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Patch libffi for GitHub Actions
+      run: |
+        # Добавляем разрешение макроса LT_SYS_SYMBOL_USCORE
+        find .buildozer/android/platform/build-* -type f -name "configure.ac" -exec sed -i '/AC_INIT/i m4_pattern_allow([LT_SYS_SYMBOL_USCORE])' {} \; || true
 
     - name: Build APK
       run: |
