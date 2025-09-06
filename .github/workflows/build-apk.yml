@@ -18,7 +18,7 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y \
-          python3-pip python3-setuptools python3-venv python3-distutils git \
+          python3-pip python3-setuptools python3-venv python3.12-distutils git \
           openjdk-17-jdk zip unzip build-essential autoconf automake libtool pkg-config
 
     - name: Update git submodules
