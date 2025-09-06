@@ -17,13 +17,18 @@ jobs:
         sudo apt update
         sudo apt install -y \
           python3-pip python3-setuptools git openjdk-17-jdk zip unzip \
-          build-essential autoconf automake libtool-bin pkg-config
+          build-essential autoconf automake libtool pkg-config
+
+    - name: Install older autoconf and libtool
+      run: |
+        sudo apt-get install -y autoconf2.13 libtool
+        sudo ln -sf /usr/bin/autoconf2.13 /usr/bin/autoconf
 
     - name: Install Buildozer
       run: |
         pip3 install --upgrade pip
         pip3 install --user buildozer cython
-        echo "$HOME/.local/bin" >> $GITHUB_PATH  # добавляем путь в PATH
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
 
     - name: Build APK
       run: |
