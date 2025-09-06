@@ -12,25 +12,32 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Set up Python
+    - name: Setup Python 3.10
       uses: actions/setup-python@v4
       with:
-        python-version: '3.11'
+        python-version: 3.10
 
-    - name: Install dependencies
+    - name: Install system dependencies
       run: |
         sudo apt update
-        sudo apt install -y python3-pip python3-setuptools git openjdk-17-jdk zip unzip \
-                            build-essential autoconf automake libtool pkg-config
+        sudo apt install -y \
+          git openjdk-17-jdk zip unzip build-essential \
+          autoconf automake libtool pkg-config
 
-    - name: Install Buildozer
+    - name: Create virtual environment
       run: |
-        pip3 install --upgrade pip
-        pip3 install --user buildozer cython
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
+        python -m venv venv
+        source venv/bin/activate
+        python -m pip install --upgrade pip
+
+    - name: Install Buildozer and P4A
+      run: |
+        source venv/bin/activate
+        pip install buildozer==1.5.0 python-for-android==2023.12.1 cython
 
     - name: Build APK
       run: |
+        source venv/bin/activate
         buildozer android debug
 
     - name: Upload APK
