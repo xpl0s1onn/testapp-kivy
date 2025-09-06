@@ -12,32 +12,22 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y \
-          python3-pip python3-setuptools git openjdk-17-jdk zip unzip \
-          build-essential autoconf automake libtool pkg-config \
-          python3-distutils python3-dev
+        sudo apt install -y python3-pip python3-setuptools git openjdk-17-jdk zip unzip \
+                            build-essential autoconf automake libtool pkg-config
 
     - name: Install Buildozer
       run: |
         pip3 install --upgrade pip
         pip3 install --user buildozer cython
-        echo "$HOME/.local/bin" >> $GITHUB_PATH  # добавляем путь в PATH
-
-    - name: Patch libffi for GitHub Actions
-      run: |
-        echo "🔧 Патчим libffi..."
-        BUILD_DIR=".buildozer/android/platform/build-*"
-        if [ -d $BUILD_DIR ]; then
-            find $BUILD_DIR -name "configure.ac" | while read f; do
-                echo "⚡ Разрешаем LT_SYS_SYMBOL_USCORE в $f"
-                sed -i '/AC_INIT/i m4_pattern_allow([LT_SYS_SYMBOL_USCORE])' "$f"
-            done
-        else
-            echo "⚠️ Папка libffi ещё не создана — пропускаем патч, попробуем после сборки"
-        fi
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
 
     - name: Build APK
       run: |
