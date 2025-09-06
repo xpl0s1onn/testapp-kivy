@@ -106,6 +106,8 @@ android.api = 33
 # (int) Minimum API your APK / AAB will support.
 android.minapi = 21
 
+android.accept_sdk_license = True
+
 # (int) Android SDK version to use
 # android.sdk = 20
 
