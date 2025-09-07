@@ -14,11 +14,6 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-
     - name: Install system dependencies
       run: |
         sudo apt update
@@ -61,12 +56,12 @@ jobs:
     - name: Patch pyjnius (replace long with int)
       run: |
         echo "🔧 Патчим jnius_utils.pxi (long → int)..."
-        FILE=$(python3 -c "import jnius, pathlib; print(pathlib.Path(jnius.__file__).parent / 'jnius_utils.pxi')")
+        FILE=$(find .buildozer -type f -name "jnius_utils.pxi" | head -n 1)
         if [ -f "$FILE" ]; then
           sed -i 's/isinstance(arg, long)/isinstance(arg, int)/g' "$FILE"
           echo "✅ Патч применён: $FILE"
         else
-          echo "⚠️ jnius_utils.pxi не найден — пропускаем патч"
+          echo "⚠️ jnius_utils.pxi не найден — возможно, он появится позже"
         fi
 
     - name: Build APK (second run)
