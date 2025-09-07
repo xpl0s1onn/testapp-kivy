@@ -53,30 +53,79 @@ jobs:
           echo "🎉 Патч успешно применён"
         fi
 
-    - name: Patch all pyjnius files (long → int)
+    - name: Patch all pyjnius files (robust, Python)
       run: |
-        echo "🔧 Ищем pyjnius .pxi/.pyx файлы и патчим (long -> int)..."
-        FILES=$(find .buildozer -type f -path "*/pyjnius/*" \( -name "*.pxi" -o -name "*.pyx" \) -print)
-        if [ -z "$FILES" ]; then
-          echo "⚠️ Файлы pyjnius не найдены в .buildozer — возможно, первый buildozer не докачал зависимости."
-        else
-          echo "✅ Найдено файлов:"
-          echo "$FILES"
-          while IFS= read -r f; do
-            [ -z "$f" ] && continue
-            echo "  🔧 Патчим: $f"
-            # основные безопасные замены
-            sed -i 's/isinstance(arg, long)/isinstance(arg, int)/g' "$f" || true
-            sed -i 's/isinstance(py_arg, (int, long))/isinstance(py_arg, int)/g' "$f" || true
-            sed -i -E "s/isinstance\(([^\),]+),\s*\(int,\s*long\)\)/isinstance(\1, int)/g" "$f" 2>/dev/null || true
-            sed -i 's/(int, long)/(int)/g' "$f" || true
-            sed -i 's/, long\)/)/g' "$f" || true
-            sed -i 's/,\s*long\]/]/g' "$f" || true
-          done <<< "$FILES"
-          echo "🎉 Патчирование pyjnius завершено."
-        fi
-        echo "🔎 Проверка: оставшиеся упоминания 'long' в pyjnius (первые 50 строк):"
-        grep -R --line-number --color=always "long" .buildozer | head -n 50 || echo "✅ Не найдено явных упоминаний 'long' в .buildozer (или output пуст)."
+        echo "🔧 Robust patch: replacing Python2 'long' usages in pyjnius files..."
+        python3 - <<'PY'
+import re, sys
+from pathlib import Path
+
+root = Path('.buildozer')
+if not root.exists():
+    print("⚠️ .buildozer not found, skipping pyjnius patch")
+    sys.exit(0)
+
+# collect target files inside any pyjnius folder
+targets = [p for p in root.rglob('*') if ('/pyjnius/' in str(p) or '\\pyjnius\\' in str(p)) and p.suffix in ('.pxi', '.pyx', '.py')]
+if not targets:
+    print("⚠️ No pyjnius .pxi/.pyx/.py files found — maybe first buildozer run didn't download them yet.")
+    sys.exit(0)
+
+patched = []
+for p in targets:
+    try:
+        text = p.read_text(encoding='utf-8', errors='ignore')
+    except Exception as e:
+        print(f"⚠️ Could not read {p}: {e}")
+        continue
+    orig = text
+
+    # Safe replacements
+    text = re.sub(r'isinstance\(\s*arg\s*,\s*long\s*\)', 'isinstance(arg, int)', text)
+    text = re.sub(r'isinstance\(\s*py_arg\s*,\s*\(\s*int\s*,\s*long\s*\)\s*\)', 'isinstance(py_arg, int)', text)
+    # generic: isinstance(X, (int, long)) -> isinstance(X, int)
+    text = re.sub(r'isinstance\(\s*([^\),]+?)\s*,\s*\(\s*int\s*,\s*long\s*\)\s*\)', r'isinstance(\1, int)', text)
+    # tuple (int, long) -> (int)
+    text = re.sub(r'\(\s*int\s*,\s*long\s*\)', '(int)', text)
+    # trailing patterns like ", long)" -> ")"
+    text = re.sub(r',\s*long\)', ')', text)
+    text = re.sub(r',\s*long\]', ']', text)
+    # rare patterns: (int,long) without spaces
+    text = re.sub(r'\(int,long\)', '(int)', text)
+
+    if text != orig:
+        try:
+            p.write_text(text, encoding='utf-8')
+            patched.append(str(p))
+        except Exception as e:
+            print(f"⚠️ Could not write {p}: {e}")
+
+if patched:
+    print("✅ Patched files:")
+    for f in patched:
+        print("  -", f)
+else:
+    print("ℹ️ No files required patching.")
+
+# Show remaining occurrences of 'long' within pyjnius files (first few)
+print("\n🔎 Remaining 'long' occurrences inside pyjnius (first 50 results):")
+count = 0
+for p in root.rglob('*'):
+    if ('/pyjnius/' in str(p) or '\\pyjnius\\' in str(p)) and p.is_file():
+        try:
+            lines = p.read_text(encoding='utf-8', errors='ignore').splitlines()
+        except Exception:
+            continue
+        for i,l in enumerate(lines,1):
+            if 'long' in l:
+                print(f"{p}:{i}: {l.strip()}")
+                count += 1
+                break
+            if count >= 50:
+                break
+if count == 0:
+    print("✅ No obvious 'long' occurrences left in pyjnius files (first-pass check).")
+PY
 
     - name: Build APK (second run)
       run: |
