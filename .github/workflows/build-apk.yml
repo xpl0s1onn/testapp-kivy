@@ -53,7 +53,7 @@ jobs:
           echo "🎉 Патч успешно применён"
         fi
 
-    - name: Patch all pyjnius files (robust, Python)
+- name: Patch all pyjnius files (robust, Python)
       run: |
         echo "🔧 Robust patch: replacing Python2 'long' usages in pyjnius files..."
         python3 - <<'PY'
@@ -77,15 +77,23 @@ jobs:
             except Exception as e:
                 print(f"⚠️ Could not read {p}: {e}")
                 continue
+
             orig = text
 
-            text = re.sub(r'isinstance\s*arg\s*,\s*long\s*', 'isinstance(arg, int)', text)
-            text = re.sub(r'isinstance\s*py_arg\s*,\s*\(\s*int\s*,\s*long\s*\s*\)', 'isinstance(py_arg, int)', text)
-            text = re.sub(r'isinstance\s*([^,]+?)\s*,\s*\s*int\s*,\s*long\s*\s*\)', r'isinstance(\1, int)', text)
-            text = re.sub(r'\s*int\s*,\s*long\s*', '(int)', text)
-            text = re.sub(r',\s*long\)', ')', text)
-            text = re.sub(r',\s*long\]', ']', text)
-            text = re.sub(r'int,long', '(int)', text)
+            # 1️⃣ isinstance(arg, long) -> isinstance(arg, int)
+            text = re.sub(r'isinstance\(\s*([^)]+?)\s*,\s*long\s*\)', r'isinstance(\1, int)', text)
+
+            # 2️⃣ isinstance(arg, (int, long)) -> isinstance(arg, int)
+            text = re.sub(r'isinstance\(\s*([^)]+?)\s*,\s*\(\s*int\s*,\s*long\s*\)\s*\)', r'isinstance(\1, int)', text)
+
+            # 3️⃣ заменить словари {int: 'I', long: 'J'} → {int: 'I', int: 'J'}
+            text = re.sub(r'(\b)long(\s*:\s*\'J\')', r'int\2', text)
+
+            # 4️⃣ убрать просто "long" из tuple: (int, long) -> (int)
+            text = re.sub(r'\(\s*int\s*,\s*long\s*\)', '(int)', text)
+
+            # 5️⃣ убрать "long" из списков: [int, long] -> [int]
+            text = re.sub(r'\[\s*int\s*,\s*long\s*\]', '[int]', text)
 
             if text != orig:
                 try:
