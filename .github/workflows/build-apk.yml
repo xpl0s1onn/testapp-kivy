@@ -80,19 +80,22 @@ jobs:
 
             orig = text
 
-            # 1️⃣ isinstance(arg, long) -> isinstance(arg, int)
-            text = re.sub(r'isinstance\(\s*([^)]+?)\s*,\s*long\s*\)', r'isinstance(\1, int)', text)
+            # 1️⃣ isinstance(arg, long) → isinstance(arg, int)
+            text = re.sub(r'isinstance\s*\(\s*([^)]+?)\s*,\s*long\s*\)', r'isinstance(\1, int)', text)
 
-            # 2️⃣ isinstance(arg, (int, long)) -> isinstance(arg, int)
-            text = re.sub(r'isinstance\(\s*([^)]+?)\s*,\s*\(\s*int\s*,\s*long\s*\)\s*\)', r'isinstance(\1, int)', text)
+            # 2️⃣ isinstance(arg, (int, long)) → isinstance(arg, int)
+            text = re.sub(r'isinstance\s*\(\s*([^)]+?)\s*,\s*\(\s*int\s*,\s*long\s*\)\s*\)', r'isinstance(\1, int)', text)
 
-            # 3️⃣ заменить словари {int: 'I', long: 'J'} → {int: 'I', int: 'J'}
+            # 3️⃣ Fix broken isinstance(arg) (no type) → isinstance(arg, int)
+            text = re.sub(r'isinstance\s*\(\s*([^)]+?)\s*\)', r'isinstance(\1, int)', text)
+
+            # 4️⃣ Replace dict keys: {int:'I', long:'J'} → {int:'I', int:'J'}
             text = re.sub(r'(\b)long(\s*:\s*\'J\')', r'int\2', text)
 
-            # 4️⃣ убрать просто "long" из tuple: (int, long) -> (int)
+            # 5️⃣ Clean tuples: (int, long) → (int)
             text = re.sub(r'\(\s*int\s*,\s*long\s*\)', '(int)', text)
 
-            # 5️⃣ убрать "long" из списков: [int, long] -> [int]
+            # 6️⃣ Clean lists: [int, long] → [int]
             text = re.sub(r'\[\s*int\s*,\s*long\s*\]', '[int]', text)
 
             if text != orig:
